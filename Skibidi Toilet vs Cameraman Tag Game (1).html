@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Skibidi Toilet vs Cameraman - Tag Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;600;900&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Neon Glows */
+        .glow-blue {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+        .glow-yellow {
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.5);
+        }
+
+        /* Responsive Canvas Aspect Ratio Handling */
+        #canvasContainer {
+            aspect-ratio: 16 / 9;
+            max-height: 70vh;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 3px;
+        }
+
+        /* Canvas Border Effect */
+        #gameCanvas {
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center relative select-none">
+
+    <!-- Top UI Header Bar -->
+    <header class="w-full max-w-6xl px-4 py-2 mt-2 z-20 flex justify-between items-center glass-panel rounded-2xl mx-auto">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600/30 p-2 rounded-xl border border-blue-500/40">
+                <i class="fa-solid fa-camera-retro text-2xl text-blue-400"></i>
+            </div>
+            <div>
+                <h1 class="font-orbitron text-lg md:text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+                    SKIBIDI <span class="text-red-500">TAG</span>
+                </h1>
+                <p class="text-xs text-slate-400 hidden sm:block">Persecución Urbana 2D</p>
+            </div>
+        </div>
+
+        <!-- Live Scoreboard -->
+        <div class="flex items-center space-x-4 md:space-x-8 font-orbitron">
+            <div class="text-center">
+                <span class="text-[10px] uppercase text-slate-400 block tracking-widest">Tiempo</span>
+                <span id="uiTimer" class="text-xl md:text-2xl font-black text-amber-400">01:00</span>
+            </div>
+            <!-- Dynamic Player 1 Score -->
+            <div class="text-center">
+                <span id="labelP1" class="text-[10px] uppercase text-blue-400 block tracking-widest font-bold">P1 (WASD)</span>
+                <span id="uiScoreP1" class="text-xl md:text-2xl font-black text-blue-400">0</span>
+            </div>
+            <!-- Dynamic Player 2 Score / Mode Info -->
+            <div class="text-center" id="boxP2">
+                <span id="labelP2" class="text-[10px] uppercase text-red-400 block tracking-widest font-bold">P2 (Flechas)</span>
+                <span id="uiScoreP2" class="text-xl md:text-2xl font-black text-red-400">0</span>
+            </div>
+        </div>
+
+        <!-- Sound & Pause Controls -->
+        <div class="flex items-center space-x-2">
+            <button id="btnSound" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all border border-slate-700">
+                <i class="fa-solid fa-volume-high text-lg"></i>
+            </button>
+            <button id="btnPause" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all border border-slate-700">
+                <i class="fa-solid fa-pause text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Canvas Container -->
+    <main class="relative w-full flex-1 max-w-6xl my-2 px-2 flex justify-center items-center">
+        <div id="canvasContainer" class="w-full h-full relative flex items-center justify-center">
+            <canvas id="gameCanvas" class="w-full h-full rounded-2xl bg-slate-900 border border-slate-700/60 object-contain"></canvas>
+
+            <!-- Dynamic Game Overlay Messages -->
+            <div id="gameNotification" class="absolute pointer-events-none text-center font-orbitron text-2xl md:text-4xl font-extrabold transition-opacity duration-300 opacity-0 transform -translate-y-4">
+                <!-- Text inserted dynamically -->
+            </div>
+
+            <!-- MENU OVERLAY: Mode Select Screen -->
+            <div id="startScreen" class="absolute inset-0 z-30 glass-panel rounded-2xl flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+                <div class="max-w-xl w-full flex flex-col items-center">
+                    <div class="mb-4 relative">
+                        <span class="inline-block px-4 py-1 rounded-full text-xs font-orbitron bg-red-500/20 text-red-400 border border-red-500/30 uppercase tracking-widest mb-2">¡Edición 1 vs 1 y Solo!</span>
+                        <h2 class="font-orbitron text-3xl md:text-5xl font-black text-white tracking-wide">
+                            SKIBIDI <span class="text-blue-500">TAG</span>
+                        </h2>
+                        <p class="text-slate-300 text-sm md:text-base mt-2">Elige la modalidad de juego para empezar.</p>
+                    </div>
+
+                    <!-- Mode Selector Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full my-4">
+                        <!-- Mode 1 Player -->
+                        <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-slate-800 to-blue-950/60 border-2 border-blue-500/40 text-left flex flex-col justify-between">
+                            <div>
+                                <div class="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/30 flex items-center justify-center text-blue-400 text-xl mb-2">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <h3 class="font-orbitron font-bold text-base text-white">1 JUGADOR (VS IA)</h3>
+                                <p class="text-xs text-slate-400 mt-1">Juega en solitario contra bots con inteligencia artificial.</p>
+                            </div>
+                            <div class="mt-4 flex flex-col space-y-2">
+                                <button id="mode1P_Cam" class="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-orbitron text-xs font-bold transition-all shadow-md">
+                                    <i class="fa-solid fa-camera mr-1"></i> Ser Cameraman
+                                </button>
+                                <button id="mode1P_Toilet" class="w-full py-2 px-3 rounded-lg bg-red-600 hover:bg-red-500 text-white font-orbitron text-xs font-bold transition-all shadow-md">
+                                    <i class="fa-solid fa-toilet mr-1"></i> Ser Skibidi
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Mode 2 Players (Local Keyboard) -->
+                        <div class="group relative p-4 rounded-2xl bg-gradient-to-br from-slate-800 to-purple-950/60 border-2 border-purple-500/40 text-left flex flex-col justify-between">
+                            <div>
+                                <div class="w-10 h-10 rounded-xl bg-purple-600/30 border border-purple-400/30 flex items-center justify-center text-purple-400 text-xl mb-2">
+                                    <i class="fa-solid fa-users"></i>
+                                </div>
+                                <h3 class="font-orbitron font-bold text-base text-white">2 JUGADORES (LOCAL)</h3>
+                                <p class="text-xs text-slate-400 mt-1">Enfréntate a un amigo en el mismo teclado.</p>
+                            </div>
+                            <div class="mt-4">
+                                <button id="mode2P" class="w-full py-3 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-orbitron text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center justify-center">
+                                    <i class="fa-solid fa-gamepad mr-2 text-base"></i> INICIAR 1 VS 1
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls Guide Mini-Panel -->
+                    <div class="w-full bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 flex flex-col sm:flex-row justify-around gap-2 text-left">
+                        <div>
+                            <span class="text-blue-400 font-bold block">P1 (Cameraman):</span>
+                            <span class="font-mono text-slate-200">WASD</span> + <span class="font-mono text-slate-200">Shift Izq</span> (Habilidad)
+                        </div>
+                        <div>
+                            <span class="text-red-400 font-bold block">P2 / Solo (Skibidi):</span>
+                            <span class="font-mono text-slate-200">FLECHAS</span> + <span class="font-mono text-slate-200">ESPACIO</span> (Habilidad)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAUSE & GAME OVER OVERLAY -->
+            <div id="endScreen" class="hidden absolute inset-0 z-30 glass-panel rounded-2xl flex flex-col items-center justify-center p-6 text-center">
+                <div class="max-w-md w-full bg-slate-900/90 border border-slate-700 p-8 rounded-2xl shadow-2xl flex flex-col items-center">
+                    <div id="endBadge" class="w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-4">
+                        <!-- Dynamic Icon -->
+                    </div>
+                    <h2 id="endTitle" class="font-orbitron text-3xl font-black text-white">¡FIN DEL JUEGO!</h2>
+                    <p id="endSubtitle" class="text-slate-400 text-sm mt-1">Resumen del combate</p>
+
+                    <div class="w-full bg-slate-800/60 rounded-xl p-4 my-6 space-y-3 font-orbitron">
+                        <div class="flex justify-between items-center text-sm">
+                            <span id="endP1Label" class="text-blue-400">Jugador 1</span>
+                            <span id="endP1Score" class="text-xl font-bold text-white">0</span>
+                        </div>
+                        <div id="endP2Row" class="flex justify-between items-center text-sm">
+                            <span id="endP2Label" class="text-red-400">Jugador 2</span>
+                            <span id="endP2Score" class="text-xl font-bold text-white">0</span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 w-full">
+                        <button id="btnRestart" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 font-orbitron font-bold text-white rounded-xl transition-all shadow-lg shadow-blue-600/30">
+                            <i class="fa-solid fa-rotate-right mr-2"></i> REINTENTAR
+                        </button>
+                        <button id="btnMenu" class="py-3 px-5 bg-slate-800 hover:bg-slate-700 font-orbitron font-bold text-slate-300 rounded-xl transition-all border border-slate-700">
+                            <i class="fa-solid fa-house"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom HUD & Mobile Touch Controls -->
+    <footer class="w-full max-w-6xl px-4 py-2 mb-2 z-20 flex justify-between items-center glass-panel rounded-2xl mx-auto">
+        <!-- Powerup Indicators -->
+        <div class="flex items-center space-x-3">
+            <div id="powerupStatus" class="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+                <i class="fa-solid fa-bolt text-amber-400 animate-pulse"></i>
+                <span id="powerupText" class="text-xs font-semibold text-slate-300">Power-Up Disponible</span>
+            </div>
+        </div>
+
+        <!-- Touch Controls D-Pad (Mobile only overlay trigger) -->
+        <div id="touchControls" class="flex items-center space-x-4">
+            <div class="grid grid-cols-3 gap-1 w-28 h-28 md:hidden">
+                <div></div>
+                <button id="btnUp" class="bg-slate-800/80 active:bg-blue-600 rounded-lg flex items-center justify-center text-white text-lg border border-slate-700"><i class="fa-solid fa-chevron-up"></i></button>
+                <div></div>
+                <button id="btnLeft" class="bg-slate-800/80 active:bg-blue-600 rounded-lg flex items-center justify-center text-white text-lg border border-slate-700"><i class="fa-solid fa-chevron-left"></i></button>
+                <button id="btnDown" class="bg-slate-800/80 active:bg-blue-600 rounded-lg flex items-center justify-center text-white text-lg border border-slate-700"><i class="fa-solid fa-chevron-down"></i></button>
+                <button id="btnRight" class="bg-slate-800/80 active:bg-blue-600 rounded-lg flex items-center justify-center text-white text-lg border border-slate-700"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <button id="btnMobileAbility" class="md:hidden w-14 h-14 bg-indigo-600 active:bg-indigo-500 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-600/40">
+                <i class="fa-solid fa-bolt"></i>
+            </button>
+        </div>
+    </footer>
+
+    <!-- GAME ENGINE LOGIC & AUDIO SYNTHESIZER -->
+    <script>
+        /**
+         * SKIBIDI TOILET VS CAMERAMAN - TAG GAME ENGINE
+         * Supports 1-Player (vs AI) and 2-Player (WASD vs Arrows) modes.
+         */
+
+        // --- WEB AUDIO SYNTHESIZER ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+            }
+
+            playTone(freq, type, duration, startVol = 0.2, endVol = 0) {
+                if (!this.enabled || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(startVol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(Math.max(endVol, 0.0001), this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+
+            playFlush() {
+                if (!this.enabled || !this.ctx) return;
+                try {
+                    const bufferSize = this.ctx.sampleRate * 0.4;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const output = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        output[i] = Math.random() * 2 - 1;
+                    }
+                    const whiteNoise = this.ctx.createBufferSource();
+                    whiteNoise.buffer = buffer;
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(700, this.ctx.currentTime);
+                    filter.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.4);
+
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+                    whiteNoise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    whiteNoise.start();
+                } catch (e) {}
+            }
+
+            playCatch() {
+                this.playTone(523.25, 'sine', 0.1, 0.3);
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.15, 0.3), 80);
+            }
+
+            playPowerup() {
+                this.playTone(440, 'square', 0.1, 0.2);
+                setTimeout(() => this.playTone(880, 'square', 0.2, 0.2), 100);
+            }
+
+            playStun() {
+                this.playTone(150, 'sawtooth', 0.3, 0.4);
+            }
+
+            playWin() {
+                [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+                    setTimeout(() => this.playTone(freq, 'triangle', 0.25, 0.3), idx * 120);
+                });
+            }
+
+            playGameOver() {
+                [300, 260, 220, 180].forEach((freq, idx) => {
+                    setTimeout(() => this.playTone(freq, 'sawtooth', 0.2, 0.3), idx * 100);
+                });
+            }
+        }
+
+        const sound = new SoundEngine();
+
+        // --- GAME CONFIG & CONSTANTS ---
+        const CONFIG = {
+            WORLD_WIDTH: 1200,
+            WORLD_HEIGHT: 800,
+            PLAYER_SPEED: 4.8,
+            BOT_SPEED: 3.5,
+            POWERUP_SPAWN_INTERVAL: 8000,
+            ABILITY_COOLDOWN: 5000,
+        };
+
+        const POWERUP_TYPES = {
+            BOOST: { color: '#f59e0b', icon: 'fa-bolt', name: 'Super Velocidad' },
+            STUN: { color: '#3b82f6', icon: 'fa-camera', name: 'Destello Cegador' },
+            SHIELD: { color: '#10b981', icon: 'fa-shield-halved', name: 'Escudo Protector' }
+        };
+
+        // --- GAME STATE ---
+        const state = {
+            gameMode: '1P_CAM', // '1P_CAM', '1P_TOILET', '2P_LOCAL'
+            active: false,
+            paused: false,
+            timeRemaining: 60,
+            scoreP1: 0,
+            scoreP2: 0,
+            catchesP1: 0,
+            catchesP2: 0,
+            lastFrameTime: 0,
+            p1AbilityReady: true,
+            p2AbilityReady: true,
+            p1Powerup: null,
+            p2Powerup: null,
+            p1PowerupTimer: 0,
+            p2PowerupTimer: 0
+        };
+
+        const keys = {};
+        const touchInput = { up: false, down: false, left: false, right: false };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let player1 = null; // Cameraman in 2P, or User in 1P
+        let player2 = null; // Toilet in 2P, or Null in 1P
+        let botEntities = [];
+        let powerups = [];
+        let particles = [];
+        let obstacles = [];
+
+        // --- CLASSES ---
+
+        class Entity {
+            constructor(x, y, radius, type, isPlayer = false, playerNum = 1) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.type = type; // 'CAMERAMAN' or 'TOILET'
+                this.isPlayer = isPlayer;
+                this.playerNum = playerNum;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = isPlayer ? CONFIG.PLAYER_SPEED : CONFIG.BOT_SPEED;
+                this.angle = Math.random() * Math.PI * 2;
+                this.stunnedUntil = 0;
+                this.hasShield = false;
+                this.headBob = 0;
+            }
+
+            isStunned() {
+                return Date.now() < this.stunnedUntil;
+            }
+
+            move(dx, dy) {
+                if (this.isStunned()) return;
+
+                let actualSpeed = this.speed;
+                const activePow = this.playerNum === 1 ? state.p1Powerup : state.p2Powerup;
+                if (this.isPlayer && activePow === 'BOOST') {
+                    actualSpeed *= 1.5;
+                }
+
+                if (dx !== 0 || dy !== 0) {
+                    const len = Math.hypot(dx, dy);
+                    this.vx = (dx / len) * actualSpeed;
+                    this.vy = (dy / len) * actualSpeed;
+                    this.angle = Math.atan2(dy, dx);
+                } else {
+                    this.vx *= 0.8;
+                    this.vy *= 0.8;
+                }
+
+                let newX = this.x + this.vx;
+                let newY = this.y + this.vy;
+
+                // Canvas Edge Collisions
+                newX = Math.max(this.radius, Math.min(CONFIG.WORLD_WIDTH - this.radius, newX));
+                newY = Math.max(this.radius, Math.min(CONFIG.WORLD_HEIGHT - this.radius, newY));
+
+                // Obstacle Collisions
+                for (let obs of obstacles) {
+                    const dist = Math.hypot(newX - obs.x, newY - obs.y);
+                    if (dist < this.radius + obs.radius) {
+                        const overlap = (this.radius + obs.radius) - dist;
+                        const angle = Math.atan2(newY - obs.y, newX - obs.x);
+                        newX += Math.cos(angle) * overlap;
+                        newY += Math.sin(angle) * overlap;
+                    }
+                }
+
+                this.x = newX;
+                this.y = newY;
+                this.headBob += 0.15;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Stun Status Effect
+                if (this.isStunned()) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 8, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([6, 6]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Shield Powerup Effect
+                const activePow = this.playerNum === 1 ? state.p1Powerup : state.p2Powerup;
+                if (this.hasShield || (this.isPlayer && activePow === 'SHIELD')) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 6, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#10b981';
+                    ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+                    ctx.lineWidth = 2;
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                if (this.type === 'CAMERAMAN') {
+                    this.drawCameraman();
+                } else {
+                    this.drawToilet();
+                }
+
+                // Player Tag Indicator
+                if (this.isPlayer) {
+                    ctx.fillStyle = this.playerNum === 1 ? '#3b82f6' : '#ef4444';
+                    ctx.font = 'bold 12px Orbitron';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`P${this.playerNum}`, 0, -this.radius - 12);
+                }
+
+                ctx.restore();
+            }
+
+            drawCameraman() {
+                // Body (Suit)
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = this.isPlayer ? '#3b82f6' : '#64748b';
+                ctx.lineWidth = this.isPlayer ? 3 : 2;
+                ctx.stroke();
+
+                // Red Tie
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(-2, 0, 4, this.radius - 2);
+
+                // Camera Head
+                ctx.rotate(this.angle);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-6, -10, 16, 20);
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-6, -10, 16, 20);
+
+                // Camera Lens
+                ctx.fillStyle = '#2563eb';
+                ctx.beginPath();
+                ctx.arc(10, 0, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#60a5fa';
+                ctx.stroke();
+
+                // Lens Flash Light
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(11, -2, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            drawToilet() {
+                // Toilet Bowl Outline
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.ellipse(0, 2, this.radius, this.radius * 0.85, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Water inside
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.ellipse(0, 4, this.radius * 0.65, this.radius * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Flush Tank
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(-this.radius * 0.7, -this.radius - 2, this.radius * 1.4, 8);
+                ctx.strokeStyle = '#94a3b8';
+                ctx.strokeRect(-this.radius * 0.7, -this.radius - 2, this.radius * 1.4, 8);
+
+                // Human Head with bobbing effect
+                const bobY = Math.sin(this.headBob) * 2;
+                ctx.fillStyle = '#fca5a5';
+                ctx.beginPath();
+                ctx.arc(0, -2 + bobY, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyes & Mouth
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-4, -4 + bobY, 2, 3);
+                ctx.fillRect(2, -4 + bobY, 2, 3);
+                ctx.beginPath();
+                ctx.arc(0, 1 + bobY, 3, 0, Math.PI);
+                ctx.fill();
+            }
+        }
+
+        class Powerup {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.radius = 14;
+                this.pulse = 0;
+            }
+
+            draw() {
+                this.pulse += 0.08;
+                const currentRadius = this.radius + Math.sin(this.pulse) * 2;
+                const info = POWERUP_TYPES[this.type];
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                ctx.beginPath();
+                ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
+                ctx.fillStyle = info.color;
+                ctx.globalAlpha = 0.3;
+                ctx.fill();
+
+                ctx.globalAlpha = 1.0;
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fillStyle = info.color;
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.radius = Math.random() * 4 + 2;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.03 + 0.02;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // --- MAP SETUP ---
+
+        function initMap() {
+            obstacles = [];
+            const count = 6;
+            for (let i = 0; i < count; i++) {
+                obstacles.push({
+                    x: 180 + (i % 3) * 350 + Math.random() * 50,
+                    y: 180 + Math.floor(i / 3) * 380 + Math.random() * 50,
+                    radius: 35 + Math.random() * 15
+                });
+            }
+        }
+
+        function spawnPowerup() {
+            if (powerups.length >= 3 || !state.active) return;
+            const keysArr = Object.keys(POWERUP_TYPES);
+            const randType = keysArr[Math.floor(Math.random() * keysArr.length)];
+            const x = 50 + Math.random() * (CONFIG.WORLD_WIDTH - 100);
+            const y = 50 + Math.random() * (CONFIG.WORLD_HEIGHT - 100);
+            powerups.push(new Powerup(x, y, randType));
+        }
+
+        function createParticles(x, y, color, amount = 15) {
+            for (let i = 0; i < amount; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        // --- SETUP GAME MODES ---
+
+        function setupGame(mode) {
+            sound.init();
+            state.gameMode = mode;
+            state.active = true;
+            state.paused = false;
+            state.timeRemaining = 60;
+            state.scoreP1 = 0;
+            state.scoreP2 = 0;
+            state.catchesP1 = 0;
+            state.catchesP2 = 0;
+            state.p1AbilityReady = true;
+            state.p2AbilityReady = true;
+            state.p1Powerup = null;
+            state.p2Powerup = null;
+
+            botEntities = [];
+            powerups = [];
+            particles = [];
+            initMap();
+
+            const boxP2 = document.getElementById('boxP2');
+            const labelP1 = document.getElementById('labelP1');
+            const labelP2 = document.getElementById('labelP2');
+
+            if (mode === '2P_LOCAL') {
+                // Player 1 = Cameraman (WASD)
+                player1 = new Entity(100, 100, 18, 'CAMERAMAN', true, 1);
+                // Player 2 = Skibidi Toilet (Arrows)
+                player2 = new Entity(CONFIG.WORLD_WIDTH - 100, CONFIG.WORLD_HEIGHT - 100, 16, 'TOILET', true, 2);
+
+                labelP1.innerText = "P1: CAMERAMAN (WASD)";
+                labelP2.innerText = "P2: SKIBIDI (FLECHAS)";
+                boxP2.classList.remove('hidden');
+
+                showNotification('2 JUGADORES: ¡EMPIEZA LA CAZA!', '#a855f7');
+            } else if (mode === '1P_CAM') {
+                // Player 1 = Cameraman (WASD or Arrows)
+                player1 = new Entity(100, 100, 18, 'CAMERAMAN', true, 1);
+                player2 = null;
+
+                // Spawn 6 Skibidi Toilet Bots
+                for (let i = 0; i < 6; i++) {
+                    botEntities.push(new Entity(
+                        300 + Math.random() * 700,
+                        100 + Math.random() * 600,
+                        16,
+                        'TOILET',
+                        false
+                    ));
+                }
+
+                labelP1.innerText = "JUGADOR (CAMERAMAN)";
+                labelP2.innerText = "BOTS INODORO";
+                boxP2.classList.remove('hidden');
+
+                showNotification('¡ATRAPA A LOS SKIBIDI TOILETS!', '#3b82f6');
+            } else if (mode === '1P_TOILET') {
+                // Player 1 = Skibidi Toilet (WASD or Arrows)
+                player1 = new Entity(CONFIG.WORLD_WIDTH / 2, CONFIG.WORLD_HEIGHT / 2, 16, 'TOILET', true, 1);
+                player2 = null;
+
+                // Spawn 4 Cameraman Bots chasing
+                for (let i = 0; i < 4; i++) {
+                    const cornerX = i % 2 === 0 ? 80 : CONFIG.WORLD_WIDTH - 80;
+                    const cornerY = i < 2 ? 80 : CONFIG.WORLD_HEIGHT - 80;
+                    botEntities.push(new Entity(cornerX, cornerY, 18, 'CAMERAMAN', false));
+                }
+
+                labelP1.innerText = "JUGADOR (SKIBIDI)";
+                boxP2.classList.add('hidden');
+
+                showNotification('¡ESCAPA DE LOS CAMERAMANS!', '#ef4444');
+            }
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('endScreen').classList.add('hidden');
+            updateUI();
+        }
+
+        // --- AI BOT BEHAVIOR ---
+
+        function updateBotAI(bot) {
+            if (bot.isStunned()) return;
+
+            if (bot.type === 'TOILET') {
+                // Toilet Bot flees from Player 1 Cameraman
+                let hunter = (player1 && player1.type === 'CAMERAMAN') ? player1 : null;
+                if (hunter) {
+                    const dist = Math.hypot(bot.x - hunter.x, bot.y - hunter.y);
+                    if (dist < 250) {
+                        const dx = bot.x - hunter.x;
+                        const dy = bot.y - hunter.y;
+                        bot.move(dx, dy);
+                        return;
+                    }
+                }
+                if (Math.random() < 0.03) bot.angle += (Math.random() - 0.5) * 1.5;
+                bot.move(Math.cos(bot.angle), Math.sin(bot.angle));
+
+            } else if (bot.type === 'CAMERAMAN') {
+                // Cameraman Bot chases Player 1 Toilet
+                let target = (player1 && player1.type === 'TOILET') ? player1 : null;
+                if (target) {
+                    const dx = target.x - bot.x;
+                    const dy = target.y - bot.y;
+                    bot.move(dx, dy);
+                }
+            }
+        }
+
+        // --- ABILITIES & POWERUPS ---
+
+        function triggerAbility(playerObj) {
+            if (!playerObj || !state.active) return;
+
+            const isP1 = playerObj.playerNum === 1;
+            const ready = isP1 ? state.p1AbilityReady : state.p2AbilityReady;
+            if (!ready) return;
+
+            sound.playStun();
+
+            if (isP1) state.p1AbilityReady = false;
+            else state.p2AbilityReady = false;
+
+            if (playerObj.type === 'CAMERAMAN') {
+                // Flashlight Stun
+                showNotification(`P${playerObj.playerNum}: ¡DESTELLO DE CÁMARA!`, '#3b82f6');
+                createParticles(playerObj.x, playerObj.y, '#60a5fa', 30);
+
+                // Stun nearby toilets (Bots or Player 2)
+                if (player2 && player2.type === 'TOILET') {
+                    if (Math.hypot(player2.x - playerObj.x, player2.y - playerObj.y) < 220) {
+                        player2.stunnedUntil = Date.now() + 2500;
+                        createParticles(player2.x, player2.y, '#eab308', 15);
+                    }
+                }
+                botEntities.forEach(b => {
+                    if (b.type === 'TOILET' && Math.hypot(b.x - playerObj.x, b.y - playerObj.y) < 220) {
+                        b.stunnedUntil = Date.now() + 2500;
+                        createParticles(b.x, b.y, '#eab308', 10);
+                    }
+                });
+
+            } else {
+                // Skibidi Nitro Boost
+                showNotification(`P${playerObj.playerNum}: ¡SKIBIDI BOOST!`, '#ef4444');
+                playerObj.hasShield = true;
+                if (isP1) state.p1Powerup = 'BOOST'; else state.p2Powerup = 'BOOST';
+                createParticles(playerObj.x, playerObj.y, '#ef4444', 25);
+
+                setTimeout(() => {
+                    playerObj.hasShield = false;
+                    if (isP1) state.p1Powerup = null; else state.p2Powerup = null;
+                }, 2000);
+            }
+
+            // Reset Cooldown
+            setTimeout(() => {
+                if (isP1) state.p1AbilityReady = true;
+                else state.p2AbilityReady = true;
+            }, CONFIG.ABILITY_COOLDOWN);
+        }
+
+        // --- GAME LOOP & UPDATES ---
+
+        function update(dt) {
+            if (!state.active || state.paused) return;
+
+            // 1. Controls for Player 1
+            let p1dx = 0, p1dy = 0;
+            // Player 1 uses WASD (or Arrow keys if in 1P mode as fallback)
+            if (keys['KeyW'] || (state.gameMode !== '2P_LOCAL' && keys['ArrowUp']) || touchInput.up) p1dy -= 1;
+            if (keys['KeyS'] || (state.gameMode !== '2P_LOCAL' && keys['ArrowDown']) || touchInput.down) p1dy += 1;
+            if (keys['KeyA'] || (state.gameMode !== '2P_LOCAL' && keys['ArrowLeft']) || touchInput.left) p1dx -= 1;
+            if (keys['KeyD'] || (state.gameMode !== '2P_LOCAL' && keys['ArrowRight']) || touchInput.right) p1dx += 1;
+            if (player1) player1.move(p1dx, p1dy);
+
+            // 2. Controls for Player 2 (Local 2P mode)
+            if (state.gameMode === '2P_LOCAL' && player2) {
+                let p2dx = 0, p2dy = 0;
+                if (keys['ArrowUp']) p2dy -= 1;
+                if (keys['ArrowDown']) p2dy += 1;
+                if (keys['ArrowLeft']) p2dx -= 1;
+                if (keys['ArrowRight']) p2dx += 1;
+                player2.move(p2dx, p2dy);
+            }
+
+            // 3. Update Bots
+            botEntities.forEach(b => updateBotAI(b));
+
+            // 4. Tag & Catch Rules
+            if (state.gameMode === '2P_LOCAL') {
+                // P1 Cameraman vs P2 Toilet
+                const distP1P2 = Math.hypot(player1.x - player2.x, player1.y - player2.y);
+                if (distP1P2 < player1.radius + player2.radius) {
+                    if (!player2.hasShield && state.p2Powerup !== 'SHIELD') {
+                        sound.playFlush();
+                        sound.playCatch();
+                        createParticles(player2.x, player2.y, '#0EA5E9', 25);
+
+                        state.scoreP1 += 100;
+                        state.catchesP1++;
+                        showNotification('¡P1 ATRAPÓ A P2!', '#3b82f6');
+
+                        // Respawn Toilet P2 away
+                        player2.x = CONFIG.WORLD_WIDTH - 100;
+                        player2.y = CONFIG.WORLD_HEIGHT - 100;
+                    }
+                }
+                // P2 Toilet gains survival score over time
+                state.scoreP2 += Math.floor(dt * 15);
+
+            } else if (state.gameMode === '1P_CAM') {
+                // P1 Cameraman chases Toilet bots
+                for (let i = botEntities.length - 1; i >= 0; i--) {
+                    const toilet = botEntities[i];
+                    const dist = Math.hypot(player1.x - toilet.x, player1.y - toilet.y);
+                    if (dist < player1.radius + toilet.radius) {
+                        sound.playFlush();
+                        sound.playCatch();
+                        createParticles(toilet.x, toilet.y, '#0EA5E9', 20);
+
+                        state.scoreP1 += 100;
+                        state.catchesP1++;
+                        showNotification('¡INODORO ATRAPADO!', '#10b981');
+
+                        toilet.x = Math.random() < 0.5 ? 50 : CONFIG.WORLD_WIDTH - 50;
+                        toilet.y = 50 + Math.random() * (CONFIG.WORLD_HEIGHT - 100);
+                    }
+                }
+            } else if (state.gameMode === '1P_TOILET') {
+                // P1 Toilet flees Cameraman bots
+                botEntities.forEach(hunter => {
+                    const dist = Math.hypot(player1.x - hunter.x, player1.y - hunter.y);
+                    if (dist < player1.radius + hunter.radius) {
+                        if (!player1.hasShield && state.p1Powerup !== 'SHIELD') {
+                            createParticles(player1.x, player1.y, '#ef4444', 30);
+                            endGame(false);
+                        }
+                    }
+                });
+                state.scoreP1 += Math.floor(dt * 15);
+            }
+
+            // 5. Powerup Pickup Logic
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const p = powerups[i];
+
+                if (player1 && Math.hypot(player1.x - p.x, player1.y - p.y) < player1.radius + p.radius) {
+                    sound.playPowerup();
+                    state.p1Powerup = p.type;
+                    state.p1PowerupTimer = Date.now() + 5000;
+                    showNotification(`P1: ${POWERUP_TYPES[p.type].name}`, POWERUP_TYPES[p.type].color);
+                    powerups.splice(i, 1);
+                    continue;
+                }
+
+                if (player2 && Math.hypot(player2.x - p.x, player2.y - p.y) < player2.radius + p.radius) {
+                    sound.playPowerup();
+                    state.p2Powerup = p.type;
+                    state.p2PowerupTimer = Date.now() + 5000;
+                    showNotification(`P2: ${POWERUP_TYPES[p.type].name}`, POWERUP_TYPES[p.type].color);
+                    powerups.splice(i, 1);
+                }
+            }
+
+            // Timed expiration for powerups
+            if (state.p1Powerup && Date.now() > state.p1PowerupTimer) state.p1Powerup = null;
+            if (state.p2Powerup && Date.now() > state.p2PowerupTimer) state.p2Powerup = null;
+
+            // 6. Update Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].alpha <= 0) particles.splice(i, 1);
+            }
+
+            updateUI();
+        }
+
+        // --- RENDER ENGINE ---
+
+        function render() {
+            ctx.clearRect(0, 0, CONFIG.WORLD_WIDTH, CONFIG.WORLD_HEIGHT);
+
+            // Grid background pattern
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            const gridSize = 60;
+            for (let x = 0; x < CONFIG.WORLD_WIDTH; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, CONFIG.WORLD_HEIGHT);
+                ctx.stroke();
+            }
+            for (let y = 0; y < CONFIG.WORLD_HEIGHT; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(CONFIG.WORLD_WIDTH, y);
+                ctx.stroke();
+            }
+
+            // Obstacles
+            obstacles.forEach(obs => {
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(obs.x, obs.y, obs.radius * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Powerups & Entities
+            powerups.forEach(p => p.draw());
+            botEntities.forEach(b => b.draw());
+            if (player1) player1.draw();
+            if (player2) player2.draw();
+            particles.forEach(p => p.draw());
+        }
+
+        // --- ENGINE TIMERS & LOOPS ---
+
+        function gameLoop(timestamp) {
+            const dt = (timestamp - state.lastFrameTime) / 1000 || 0;
+            state.lastFrameTime = timestamp;
+
+            update(dt);
+            render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        setInterval(() => {
+            if (!state.active || state.paused) return;
+            state.timeRemaining--;
+            if (state.timeRemaining <= 0) {
+                endGame(true);
+            }
+        }, 1000);
+
+        setInterval(() => {
+            spawnPowerup();
+        }, CONFIG.POWERUP_SPAWN_INTERVAL);
+
+        // --- UI & NOTIFICATIONS ---
+
+        function updateUI() {
+            const mins = Math.floor(state.timeRemaining / 60).toString().padStart(2, '0');
+            const secs = (state.timeRemaining % 60).toString().padStart(2, '0');
+            document.getElementById('uiTimer').innerText = `${mins}:${secs}`;
+            document.getElementById('uiScoreP1').innerText = Math.floor(state.scoreP1);
+            document.getElementById('uiScoreP2').innerText = Math.floor(state.scoreP2);
+
+            const pStatus = document.getElementById('powerupText');
+            if (state.p1Powerup) {
+                pStatus.innerText = `P1: ${POWERUP_TYPES[state.p1Powerup].name}`;
+                pStatus.style.color = POWERUP_TYPES[state.p1Powerup].color;
+            } else if (state.p2Powerup) {
+                pStatus.innerText = `P2: ${POWERUP_TYPES[state.p2Powerup].name}`;
+                pStatus.style.color = POWERUP_TYPES[state.p2Powerup].color;
+            } else {
+                pStatus.innerText = 'Power-Up Disponible';
+                pStatus.style.color = '#94a3b8';
+            }
+        }
+
+        function showNotification(text, color = '#3b82f6') {
+            const el = document.getElementById('gameNotification');
+            el.innerText = text;
+            el.style.color = color;
+            el.classList.remove('opacity-0', '-translate-y-4');
+            el.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                el.classList.remove('opacity-100', 'translate-y-0');
+                el.classList.add('opacity-0', '-translate-y-4');
+            }, 1200);
+        }
+
+        function endGame(timeUp) {
+            state.active = false;
+            sound.playWin();
+
+            const endBadge = document.getElementById('endBadge');
+            const endTitle = document.getElementById('endTitle');
+            const endSubtitle = document.getElementById('endSubtitle');
+
+            endBadge.className = "w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-4 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 glow-yellow";
+            endBadge.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+
+            if (state.gameMode === '2P_LOCAL') {
+                if (state.catchesP1 >= 3 || state.scoreP1 > state.scoreP2) {
+                    endTitle.innerText = '¡GANA P1 (CAMERAMAN)!';
+                    endSubtitle.innerText = 'Dominación total sobre Skibidi Toilet';
+                } else {
+                    endTitle.innerText = '¡GANA P2 (SKIBIDI)!';
+                    endSubtitle.innerText = 'Sobrevivió al tiempo límite';
+                }
+                document.getElementById('endP2Row').classList.remove('hidden');
+                document.getElementById('endP1Label').innerText = 'Puntuación P1';
+                document.getElementById('endP2Label').innerText = 'Puntuación P2';
+                document.getElementById('endP1Score').innerText = Math.floor(state.scoreP1);
+                document.getElementById('endP2Score').innerText = Math.floor(state.scoreP2);
+            } else {
+                endTitle.innerText = timeUp ? '¡TIEMPO AGOTADO!' : '¡ATRAPADO!';
+                endSubtitle.innerText = 'Resultado 1 Jugador';
+                document.getElementById('endP2Row').classList.add('hidden');
+                document.getElementById('endP1Label').innerText = 'Puntos Conseguidos';
+                document.getElementById('endP1Score').innerText = Math.floor(state.scoreP1);
+            }
+
+            document.getElementById('endScreen').classList.remove('hidden');
+        }
+
+        // --- CANVAS RESIZING ---
+
+        function resizeCanvas() {
+            canvas.width = CONFIG.WORLD_WIDTH;
+            canvas.height = CONFIG.WORLD_HEIGHT;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- INPUT EVENT LISTENERS ---
+
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+
+            // Player 1 Ability Trigger (Shift Left)
+            if (e.code === 'ShiftLeft' && player1) {
+                triggerAbility(player1);
+            }
+
+            // Player 2 / 1P Ability Trigger (Space)
+            if (e.code === 'Space') {
+                if (state.gameMode === '2P_LOCAL' && player2) {
+                    triggerAbility(player2);
+                } else if (player1) {
+                    triggerAbility(player1);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            keys[e.code] = false;
+        });
+
+        // Touch Control Bindings
+        const bindTouch = (id, keyName) => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); touchInput[keyName] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); touchInput[keyName] = false; });
+            btn.addEventListener('mousedown', () => { touchInput[keyName] = true; });
+            btn.addEventListener('mouseup', () => { touchInput[keyName] = false; });
+        };
+
+        bindTouch('btnUp', 'up');
+        bindTouch('btnDown', 'down');
+        bindTouch('btnLeft', 'left');
+        bindTouch('btnRight', 'right');
+
+        document.getElementById('btnMobileAbility').addEventListener('click', () => triggerAbility(player1));
+
+        // Mode Selectors
+        document.getElementById('mode1P_Cam').addEventListener('click', () => setupGame('1P_CAM'));
+        document.getElementById('mode1P_Toilet').addEventListener('click', () => setupGame('1P_TOILET'));
+        document.getElementById('mode2P').addEventListener('click', () => setupGame('2P_LOCAL'));
+
+        document.getElementById('btnRestart').addEventListener('click', () => setupGame(state.gameMode));
+        document.getElementById('btnMenu').addEventListener('click', () => {
+            state.active = false;
+            document.getElementById('endScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+        });
+
+        document.getElementById('btnPause').addEventListener('click', () => {
+            if (!state.active) return;
+            state.paused = !state.paused;
+            const icon = document.getElementById('btnPause').querySelector('i');
+            icon.className = state.paused ? 'fa-solid fa-play text-lg text-emerald-400' : 'fa-solid fa-pause text-lg';
+            showNotification(state.paused ? 'PAUSA' : '¡REANUDADO!', '#eab308');
+        });
+
+        document.getElementById('btnSound').addEventListener('click', () => {
+            sound.enabled = !sound.enabled;
+            const icon = document.getElementById('btnSound').querySelector('i');
+            icon.className = sound.enabled ? 'fa-solid fa-volume-high text-lg' : 'fa-solid fa-volume-xmark text-lg text-red-400';
+        });
+
+        window.onload = () => {
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
